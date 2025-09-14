@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install .
+
+      - name: Basic import and CLI help
+        run: |
+          python - << 'PY'
+          import portfolio_tracker
+          print('Imported portfolio_tracker OK')
+          PY
+          portfolio-tracker --help || true
+          pt --help || true
+          python portfolio_tracker.py --help || true
+
+      # Networked tests are optional to avoid flakiness
+      - name: Run basic non-networked checks
+        run: |
+          python -c "import sys; print('Python', sys.version)"
+

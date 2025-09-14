@@ -1,0 +1,67 @@
+{
+  "portfolio": {
+    "crypto": {
+      "holdings": [
+        {
+          "symbol": "BTC",
+          "name": "Bitcoin",
+          "quantity": 0.5,
+          "average_cost": 45000.00,
+          "current_price": 50000.00,
+          "last_updated": "2025-08-21T10:00:00Z"
+        }
+      ]
+    },
+    "hard_assets": {
+      "precious_metals": [
+        {
+          "type": "gold",
+          "unit": "oz",
+          "quantity": 2.0,
+          "average_cost": 1800.00,
+          "current_spot_price": 1900.00,
+          "last_updated": "2025-08-21T10:00:00Z"
+        }
+      ],
+      "other": [
+        {
+          "name": "Silver Coins",
+          "type": "silver",
+          "unit": "oz",
+          "quantity": 50.0,
+          "average_cost": 25.00,
+          "current_spot_price": 28.00,
+          "last_updated": "2025-08-21T10:00:00Z"
+        }
+      ]
+    },
+    "summary": {
+      "total_value": 0.0,
+      "allocation": {
+        "crypto": 0.0,
+        "precious_metals": 0.0,
+        "other": 0.0
+      },
+      "last_calculated": "2025-08-21T10:00:00Z"
+    }
+  },
+  "config": {
+    "api_keys": {
+      "coingecko": "",
+      "metals_api": ""
+    },
+    "preferences": {
+      "currency": "USD",
+      "update_frequency": 300,
+      "show_cost_basis": true
+    }
+  },
+  "history": [
+    {
+      "date": "2025-08-21",
+      "total_value": 125000.0,
+      "daily_change": 1250.0,
+      "daily_change_percent": 1.0
+    }
+  ]
+}
