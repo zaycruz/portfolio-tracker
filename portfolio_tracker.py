@@ -257,12 +257,14 @@ def crypto():
     Commands:
         add       Add a new crypto holding to your portfolio  
         remove    Remove a crypto holding from your portfolio
-        update    Update all crypto prices with latest market data
+        update    Adjust quantity of an existing crypto holding
+        prices    Update all crypto prices with latest market data
     
     Example Usage:
-        portfolio-tracker crypto add       # Add Bitcoin, Ethereum, etc.
-        portfolio-tracker crypto update    # Refresh all crypto prices
-        portfolio-tracker crypto remove    # Remove a holding
+        portfolio-tracker crypto add        # Add Bitcoin, Ethereum, etc.
+        portfolio-tracker crypto update     # Adjust a holding's quantity
+        portfolio-tracker crypto prices     # Refresh all crypto prices
+        portfolio-tracker crypto remove     # Remove a holding
     """
     pass
 
@@ -420,6 +422,45 @@ def crypto_adjust(symbol: str, set_qty: float, add_qty: float, sub_qty: float):
     holding['last_updated'] = datetime.now().isoformat()
     save_portfolio(portfolio)
     console.print(f"[green]✓ Updated {holding.get('name','')} quantity: {current_qty} → {new_qty}")
+
+
+@crypto.command(name="prices")
+def crypto_update_prices():
+    """🔄 Update cryptocurrency prices with latest market data
+
+    Fetches current USD prices from CoinGecko for all tracked crypto holdings
+    and updates your portfolio entries in-place.
+    """
+    portfolio = load_portfolio()
+    holdings = portfolio.get('crypto', {}).get('holdings', [])
+    if not holdings:
+        console.print("[yellow]No crypto holdings to update[/yellow]")
+        return
+
+    console.print("[yellow]Updating cryptocurrency prices...[/yellow]")
+    updated_count = 0
+
+    for h in holdings:
+        coin_id = (h.get('symbol') or '').strip().lower()
+        if not coin_id:
+            continue
+        price = get_crypto_price(coin_id)
+        if price is not None:
+            h['current_price'] = float(price)
+            h['last_updated'] = datetime.now().isoformat()
+            updated_count += 1
+            console.print(f"Updated {h.get('name', coin_id)}: ${float(price):.2f}")
+        else:
+            console.print(f"[yellow]Skipped {h.get('name', coin_id)}: no price data[/yellow]")
+
+    save_portfolio(portfolio)
+    console.print(f"[green]✓ Updated {updated_count} crypto prices[/green]")
+
+# Register alias: `crypto update` behaves like `crypto adjust`
+try:
+    crypto.add_command(crypto_adjust, name='update')
+except Exception:
+    pass
 
 
 def get_metals_price(metal_type):
@@ -651,7 +692,16 @@ def update():
 @cli.group()
 def assets():
     """🥇 Hard assets management commands"""
-    
+    pass
+
+# Alias 'assets' subcommands to 'hard_assets' implementations for consistency
+try:
+    assets.add_command(hard_assets.commands['add'], name='add')
+    assets.add_command(hard_assets.commands['remove'], name='remove')
+    assets.add_command(hard_assets.commands['update'], name='update')
+except Exception:
+    # If command registration fails, avoid crashing CLI
+    pass
 
 @cli.group()
 def equities():
@@ -978,7 +1028,7 @@ def update():
     
     # Update crypto prices
     console.print("\n[cyan]Updating crypto prices...[/cyan]")
-    os.system(f"python3 {__file__} crypto update")
+    os.system(f"python3 {__file__} crypto prices")
     
     # Update hard asset prices  
     console.print("\n[cyan]Updating hard asset prices...[/cyan]")
@@ -1059,7 +1109,8 @@ def interactive():
                 console.print("• [cyan]update[/cyan] - Update all prices")
                 console.print("• [cyan]crypto add[/cyan] - Add crypto holding")
                 console.print("• [cyan]crypto remove[/cyan] - Remove crypto holding")
-                console.print("• [cyan]crypto update[/cyan] - Update crypto prices")
+                console.print("• [cyan]crypto update[/cyan] - Update crypto quantity")
+                console.print("• [cyan]crypto prices[/cyan] - Update crypto prices")
                 console.print("• [cyan]assets add[/cyan] - Add hard asset")
                 console.print("• [cyan]assets remove[/cyan] - Remove hard asset")
                 console.print("• [cyan]assets update[/cyan] - Update asset prices")
@@ -1132,7 +1183,8 @@ def help_commands():
     
     crypto_table.add_row("crypto add", "Add crypto holding", "portfolio-tracker crypto add")
     crypto_table.add_row("crypto remove", "Remove crypto holding", "portfolio-tracker crypto remove")
-    crypto_table.add_row("crypto update", "Update crypto prices", "portfolio-tracker crypto update")
+    crypto_table.add_row("crypto update", "Update crypto quantity", "portfolio-tracker crypto update")
+    crypto_table.add_row("crypto prices", "Update crypto prices", "portfolio-tracker crypto prices")
     
     console.print("\n") 
     console.print(crypto_table)

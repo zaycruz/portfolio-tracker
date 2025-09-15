@@ -81,7 +81,8 @@ source venv/bin/activate
 ### Cryptocurrency Management
 - `crypto add` - Add a cryptocurrency holding
 - `crypto remove` - Remove a cryptocurrency holding
-- `crypto update` - Update crypto prices
+- `crypto update` - Update crypto holding quantity (interactive add/subtract)
+- `crypto prices` - Update crypto prices
 
 ### Hard Assets Management
 - `assets add` - Add hard assets (gold, silver, etc.)
