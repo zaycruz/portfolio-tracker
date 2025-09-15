@@ -61,6 +61,18 @@ source venv/bin/activate
    python portfolio_tracker.py show
    ```
 
+5. **(Optional) Connect Robinhood for equities:**
+   ```bash
+   # Install optional dependency for live equities
+   pip install robin-stocks python-dotenv
+
+   # Configure credentials locally (stored in ~/.portfolio-tracker/config.json)
+   python portfolio_tracker.py config   # Choose "Robinhood connection"
+
+   # View equities positions and equity total
+   python portfolio_tracker.py equities show
+   ```
+
 ## Available Commands
 
 ### Portfolio Overview
@@ -79,6 +91,9 @@ source venv/bin/activate
 ### Utilities
 - `update` - Update all asset prices
 - `config` - Configure settings
+
+### Equities (Robinhood)
+- `equities show` - Display live stock positions and total equity from Robinhood
 
 ## Data Storage
 
@@ -104,6 +119,31 @@ printf '{\n  "api_keys": { "metals_api": "<your_key>" }\n}\n' > ~/.portfolio-tra
 
 If no key is configured, the CLI will prompt you to enter metal prices manually when needed.
 
+### Robinhood credentials
+
+You can provide Robinhood credentials via either local config or environment variables. The CLI mirrors local config values into environment variables for convenience.
+
+- Local config path: `~/.portfolio-tracker/config.json`
+  ```json
+  {
+    "robinhood": {
+      "username": "<your_username>",
+      "password": "<your_password>",
+      "account_number": "<your_account_number>"
+    }
+  }
+  ```
+
+- Environment variables (auto-populated from config on startup):
+  - `USERNAME`
+  - `PASSWORD`
+  - `ACCOUNT_NUMBER`
+
+Use the config wizard to set these securely on your machine:
+```bash
+pt config   # pick "Robinhood connection"
+```
+
 ## Important Notes
 
 🔒 **Security**: All data stored locally.
@@ -118,6 +158,10 @@ If no key is configured, the CLI will prompt you to enter metal prices manually 
 **Missing dependencies**: Install with `pip install click rich requests`
 
 **Price feed failures**: Most commands have fallback values and will continue to work.
+
+**Robinhood not installed**: Install optional deps with `pip install robin-stocks python-dotenv`.
+
+**Missing Robinhood credentials**: Run `pt config` and complete the Robinhood section, or set `USERNAME`, `PASSWORD`, and `ACCOUNT_NUMBER` env vars. The CLI mirrors config values to env on launch.
 
 ## Example Usage
 

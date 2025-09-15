@@ -74,6 +74,93 @@ def save_config(config):
         json.dump(config, f, indent=2)
 
 
+def sync_env_from_config(config: dict) -> None:
+    """Populate standard env vars from local config if present.
+
+    Mirrors config["robinhood"] values into environment variables commonly
+    used by integrations so that downstream libraries can discover them.
+    """
+    try:
+        rh = (config or {}).get("robinhood") or {}
+        mapping = {
+            "USERNAME": rh.get("username"),
+            "PASSWORD": rh.get("password"),
+            "ACCOUNT_NUMBER": rh.get("account_number"),
+        }
+        for key, val in mapping.items():
+            if val:
+                os.environ[key] = str(val)
+    except Exception:
+        # Never let env sync break the CLI
+        pass
+
+
+def _get_rh_config(config: dict) -> dict:
+    """Return the nested Robinhood config dict (creating structure if missing)."""
+    if not isinstance(config, dict):
+        config = {}
+    if not config.get("robinhood"):
+        config["robinhood"] = {"username": "", "password": "", "account_number": ""}
+    else:
+        # Backfill any missing keys
+        rh = config["robinhood"]
+        rh.setdefault("username", "")
+        rh.setdefault("password", "")
+        rh.setdefault("account_number", "")
+    return config
+
+
+def _configure_robinhood_interactive(config: dict) -> dict:
+    """Interactive prompts to capture Robinhood credentials and persist them.
+
+    Prompts for username and account number, and optionally updates the
+    password (input hidden). Returns the updated config dict.
+    """
+    config = _get_rh_config(config)
+    rh_cfg = config["robinhood"]
+
+    console.print(Panel.fit("🔐 Robinhood Connection", style="bold blue"))
+
+    current_user = rh_cfg.get("username") or ""
+    current_acct = rh_cfg.get("account_number") or ""
+
+    # Username and account number (show current as default if present)
+    username = Prompt.ask("Robinhood username", default=current_user) if current_user else Prompt.ask("Robinhood username")
+    account_number = (
+        Prompt.ask("Robinhood account number", default=current_acct)
+        if current_acct else
+        Prompt.ask("Robinhood account number")
+    )
+
+    # Password – ask whether to update to avoid forcing re-entry
+    update_pwd = click.confirm("Update password now?", default=(not bool(rh_cfg.get("password"))))
+    if update_pwd:
+        # Use click.prompt to hide input and confirm
+        password = click.prompt("Robinhood password", hide_input=True, confirmation_prompt=True)
+        rh_cfg["password"] = password
+
+    rh_cfg["username"] = username.strip()
+    rh_cfg["account_number"] = account_number.strip()
+
+    save_config(config)
+    # Reflect into env for current process
+    sync_env_from_config(config)
+
+    # Try a light validation if the optional dependency is present
+    result = robinhood_port.get_portfolio_data(config)
+    err = result.get("error")
+    if err == "missing_credentials":
+        console.print("[red]Credentials incomplete. Please ensure username, password, and account number are set.[/red]")
+    elif isinstance(err, str) and err.startswith("login_or_fetch_failed"):
+        console.print(f"[red]Login failed: {err}[/red]")
+    elif err == "robin-stocks not installed":
+        console.print("[yellow]robin-stocks not installed. Install with: pip install robin-stocks[/yellow]")
+    else:
+        console.print("[green]✓ Robinhood configuration saved[/green]")
+
+    return config
+
+
 def convert_to_ounces(quantity, unit):
     """Convert a quantity to ounces from a given unit."""
     if unit.lower() in ['g', 'gram', 'grams']:
@@ -84,6 +171,7 @@ def convert_to_ounces(quantity, unit):
 def get_robinhood_portfolio():
     """Get the Robinhood portfolio data using config/env if available"""
     cfg = load_config()
+    sync_env_from_config(cfg)
     return robinhood_port.get_portfolio_data(cfg)
 
 @click.group(invoke_without_command=True)
@@ -104,6 +192,12 @@ def cli(ctx):
     
     For detailed help on any command, use: portfolio-tracker COMMAND --help
     """
+    # Make sure env reflects local config early
+    try:
+        sync_env_from_config(load_config())
+    except Exception:
+        pass
+
     if ctx.invoked_subcommand is None:
         # No subcommand was provided, start interactive mode
         ctx.invoke(interactive)
@@ -906,16 +1000,27 @@ def config():
 
     while True:
         console.print(Panel.fit("⚙️  Configuration Menu", style="bold blue"))
-        console.print("1. General Preferences")
-        console.print("2. Back to main menu")
-        choice = Prompt.ask("Enter your choice", choices=["1", "2"], default="2")
+        console.print("1. Robinhood connection")
+        console.print("2. General preferences")
+        console.print("3. Back to main menu")
+        choice = Prompt.ask("Enter your choice", choices=["1", "2", "3"], default="3")
 
         if choice == '1':
-            console.print(Panel.fit("General Preferences", style="bold blue"))
-            # ... (keep existing preferences logic here)
-            pass
-
+            config = _configure_robinhood_interactive(config)
         elif choice == '2':
+            console.print(Panel.fit("General Preferences", style="bold blue"))
+            prefs = (config.get("preferences") or {})
+            currency = Prompt.ask("Currency (e.g., USD, EUR)", default=prefs.get("currency", "USD"))
+            show_cost_basis = click.confirm("Show cost basis in summaries?", default=prefs.get("show_cost_basis", True))
+            update_frequency = click.prompt("Auto-update frequency (seconds)", default=prefs.get("update_frequency", 300), type=int)
+            config["preferences"] = {
+                "currency": currency,
+                "show_cost_basis": bool(show_cost_basis),
+                "update_frequency": int(update_frequency),
+            }
+            save_config(config)
+            console.print("[green]✓ Preferences saved[/green]")
+        elif choice == '3':
             break
 
 
